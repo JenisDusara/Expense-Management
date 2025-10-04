@@ -1,0 +1,10 @@
+{
+  "placeholderImages": [
+    {
+      "id": "receipt-example",
+      "description": "An example of a restaurant receipt for OCR scanning.",
+      "imageUrl": "https://images.unsplash.com/photo-1755675999604-27cf08957f7b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxyZWNlaXB0JTIwcGFwZXJ8ZW58MHx8fHwxNzU5NDMyOTY1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "receipt paper"
+    }
+  ]
+}

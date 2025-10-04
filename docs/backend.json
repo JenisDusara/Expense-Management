@@ -1,0 +1,266 @@
+{
+  "entities": {
+    "Company": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Company",
+      "type": "object",
+      "description": "Represents a company using the ExpenseFlow application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Company entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the company."
+        },
+        "country": {
+          "type": "string",
+          "description": "Country where the company is located."
+        },
+        "currency": {
+          "type": "string",
+          "description": "Default currency of the company."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "country",
+        "currency"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the ExpenseFlow application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Reference to Company. (Relationship: Company 1:N User)"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the user (e.g., Admin, Manager, Employee)."
+        },
+        "managerId": {
+          "type": "string",
+          "description": "Reference to the User's Manager. (Relationship: User 1:N User (employees))"
+        }
+      },
+      "required": [
+        "id",
+        "companyId",
+        "firstName",
+        "lastName",
+        "email",
+        "role"
+      ]
+    },
+    "Expense": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Expense",
+      "type": "object",
+      "description": "Represents an expense submitted by an employee.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Expense entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Expense)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount of the expense."
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency of the expense amount."
+        },
+        "companyCurrencyAmount": {
+          "type": "number",
+          "description": "Amount of the expense converted to the company's default currency."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the expense (e.g., Travel, Food, Accommodation)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the expense."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the expense.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the expense (e.g., Submitted, Approved, Rejected)."
+        },
+        "receiptImageUrl": {
+          "type": "string",
+          "description": "URL of the receipt image uploaded by the employee.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "amount",
+        "currency",
+        "companyCurrencyAmount",
+        "category",
+        "description",
+        "date",
+        "status"
+      ]
+    },
+    "ApprovalWorkflow": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ApprovalWorkflow",
+      "type": "object",
+      "description": "Defines the workflow for expense approvals.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Approval Workflow entity."
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Reference to Company. (Relationship: Company 1:N ApprovalWorkflow)"
+        },
+        "expenseId": {
+          "type": "string",
+          "description": "Reference to Expense. (Relationship: Expense 1:1 ApprovalWorkflow)"
+        },
+        "approverId": {
+          "type": "array",
+          "description": "References to Users who are approvers. (Relationship: User N:N ApprovalWorkflow)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conditionalApprovalRules": {
+          "type": "string",
+          "description": "Conditional approval rules defined in JSON format."
+        },
+        "approvalSequence": {
+          "type": "array",
+          "description": "The order that the approvers must follow.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "companyId",
+        "expenseId"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/companies/{companyId}",
+        "definition": {
+          "entityName": "Company",
+          "schema": {
+            "$ref": "#/backend/entities/Company"
+          },
+          "description": "Stores company information. Includes denormalized data if needed for authorization in subcollections.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the company."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user information.  Used for path-based authorization of user-owned data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/expenses/{expenseId}",
+        "definition": {
+          "entityName": "Expense",
+          "schema": {
+            "$ref": "#/backend/entities/Expense"
+          },
+          "description": "Stores expense data for a specific user. Path-based authorization ensures that only the user can access their expenses.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the user."
+            },
+            {
+              "name": "expenseId",
+              "description": "Unique identifier for the expense."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/companies/{companyId}/approvalWorkflows/{approvalWorkflowId}",
+        "definition": {
+          "entityName": "ApprovalWorkflow",
+          "schema": {
+            "$ref": "#/backend/entities/ApprovalWorkflow"
+          },
+          "description": "Stores approval workflows for a specific company.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the company."
+            },
+            {
+              "name": "approvalWorkflowId",
+              "description": "Unique identifier for the approval workflow."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the ExpenseFlow application's core features, including user authentication, expense submission, approval workflows, and reporting. The design emphasizes authorization independence, clarity, and scalability.  It incorporates denormalization to avoid `get()` calls in security rules, ensuring atomic operations. Segregation of data based on access needs is also used.  Path-based ownership is used where appropriate, while the membership map pattern is used where collaborative access is needed.\n\n**Authorization Independence:** The structure achieves authorization independence by denormalizing authorization-related data. For example, the `User` documents include the `companyId`, and expenses include the `userId`. This eliminates the need to perform `get()` operations to check the user's company when validating expenses, enabling atomic operations and improving security rule performance.\n\n**QAPs (Rules are not Filters):**\n*   List all expenses of a user: This is achieved through the `/users/{userId}/expenses/{expenseId}` collection structure. List operations are secured by checking `request.auth.uid == userId`.\n\n**Data Segregation:** Private user data (expenses) is stored under the `/users/{userId}` path, while company-level configuration (approval workflows) is stored under `/companies/{companyId}`. This segregation simplifies security rules and ensures that only authorized users can access specific data.\n\n**Company and User Creation:** On signup, a new company document is created in `/companies/{companyId}`, and an admin user document is created in `/users/{userId}`. The user document will include the `companyId`.\n\n**DBAC (Database-Based Access Control):** User roles (Admin, Manager, Employee) are stored in the `users` collection, enabling role-based access control in security rules based on the user's `role` attribute.\n\n**Approval Workflows:** Approval workflows are associated with a company and are stored in the `/companies/{companyId}/approvalWorkflows/{approvalWorkflowId}` collection."
+  }
+}

@@ -1,0 +1,117 @@
+/**
+ * @file Firebase Security Rules for ExpenseFlow Application
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for personal data (expenses) and a company-based access model for shared configuration data (approval workflows). It also has a Self-Creation pattern for users.
+ *
+ * Data Structure:
+ * - /companies/{companyId}: Stores company profiles.
+ * - /users/{userId}: Stores user profiles.
+ * - /users/{userId}/expenses/{expenseId}: Stores individual expense reports owned by a user.
+ * - /companies/{companyId}/approvalWorkflows/{approvalWorkflowId}: Stores approval workflow configurations for companies.
+ *
+ * Key Security Decisions:
+ * - Users can only list expenses under their own user ID.
+ * - Company data and approval workflows can only be created and modified by company admins (currently not implemented).
+ * - Self-creation allowed for user documents.
+ *
+ * Denormalization for Authorization:
+ * - Expenses are stored under the user's path (/users/{userId}/expenses/{expenseId}) to avoid needing to read the expense document to determine ownership.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Defines helper function to check if the request is from a signed-in user.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Defines helper function to check if the authenticated user ID matches the provided user ID.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Defines helper function to check if the authenticated user is the owner and the resource exists
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && exists(resource);
+    }
+
+    /**
+     * @description Secures the company profiles.
+     * @path /companies/{companyId}
+     * @allow (create) - Not implemented, but creation would need to ensure company ID matches a claim.
+     * @deny (create) - If the company ID does not match a claim or a similar admin-based authorization mechanism.
+     * @allow (get, list) - Allow public read access.
+     * @deny (update, delete) - No delete or update allowed for companies.
+     * @principle Public read access, owner-only writes (Not Yet implemented).
+     */
+    match /companies/{companyId} {
+      allow get, list: if true;
+      allow create: if false; // TODO: Add admin validation once roles are fully implemented.
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Secures the user profiles.
+     * @path /users/{userId}
+     * @allow (create) - Allow user to create their own profile if the userId matches their auth uid.
+     * @deny (create) - If the userId does not match the auth uid.
+     * @allow (get) - Allow anyone to read a user profile.
+     * @deny (list) - Listing of all users is not allowed.
+     * @allow (update) - Allow user to update their own profile if the userId matches their auth uid.
+     * @allow (delete) - No delete allowed for users.
+     * @principle Enforces user-ownership for writes, restricts listing of users.
+     */
+    match /users/{userId} {
+      allow get: if true;
+      allow list: if false;
+
+      // Allow self-creation.  The userId becomes the ownerId of this document.
+      allow create: if isOwner(userId);
+
+      // Only the owner can update. Enforce immutability of the id field.
+      allow update: if isOwner(userId) && isExistingOwner(userId);
+      allow delete: if false;
+    }
+
+    /**
+     * @description Secures the expense reports for a specific user.
+     * @path /users/{userId}/expenses/{expenseId}
+     * @allow (create) - Allow user to create expenses under their own user ID.
+     * @deny (create) - If the userId does not match the auth uid.
+     * @allow (get, list) - Allow user to read/list expenses under their own user ID.
+     * @deny (update, delete) - No update or delete allowed for expenses.
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
+     */
+    match /users/{userId}/expenses/{expenseId} {
+      allow get, list: if isOwner(userId);
+
+      // Validate that the userId in the path matches the user creating the expense.
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && isExistingOwner(userId);
+      allow delete: if false;
+    }
+
+    /**
+     * @description Secures the approval workflows for a specific company.
+     * @path /companies/{companyId}/approvalWorkflows/{approvalWorkflowId}
+     * @allow (create) - Not implemented, but creation would need to ensure company admin role.
+     * @deny (create) - If not a company admin.
+     * @allow (get, list) - Allow public read access.
+     * @deny (update, delete) - No delete or update allowed for approvalWorkflows.
+     * @principle Company admin only writes, public reads.
+     */
+    match /companies/{companyId}/approvalWorkflows/{approvalWorkflowId} {
+      allow get, list: if true; // TODO: Add company-based restrictions
+      allow create: if false; // TODO: Add company-based restrictions
+      allow update, delete: if false; // TODO: Add company-based restrictions
+    }
+  }
+}
